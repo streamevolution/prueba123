@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosistema VNHE | Web App</title>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Configuración de Tailwind para colores personalizados y fuentes -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'clay': '8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff',
+                        'clay-hover': '4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff',
+                        'clay-inset': 'inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Estilos CSS base -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body {
+            background-color: #F0F4F8;
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        /* Ocultar scrollbar en navegación pero permitir scroll */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .clay-card {
+            transition: all 0.3s ease;
+        }
+        .clay-card:active {
+            transform: scale(0.98);
+        }
+
+        /* Transiciones suaves para el menú acordeón */
+        .accordion-content {
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .accordion-content.active {
+            max-height: 500px; /* Altura máxima arbitraria suficiente */
+            opacity: 1;
+        }
+        .chevron-icon {
+            transition: transform 0.3s ease;
+        }
+        .chevron-icon.rotate {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-600 antialiased selection:bg-indigo-100 selection:text-indigo-700">
+
+    <!-- LOADER -->
+    <div id="loader" class="fixed inset-0 z-[60] bg-[#F0F4F8] flex flex-col items-center justify-center gap-4 transition-opacity duration-500">
+        <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400 font-medium tracking-wider animate-pulse text-sm">CARGANDO ECOSISTEMA...</p>
+    </div>
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="min-h-screen flex flex-col opacity-0 transition-opacity duration-700">
+        
+        <!-- HEADER -->
+        <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-white/50 px-4 py-3 shadow-sm">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <button id="menuBtn" class="p-2 rounded-xl hover:bg-slate-100 active:scale-90 transition-all text-slate-700">
+                        <i data-lucide="menu" class="w-7 h-7 stroke-2"></i>
+                    </button>
+                    <div class="flex flex-col leading-tight select-none">
+                        <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Ecosistema</span>
+                        <span class="text-xl font-black text-slate-800 tracking-tight">VNHE</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="hidden md:flex p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-slate-400 hover:text-indigo-500">
+                        <i data-lucide="search" class="w-5 h-5"></i>
+                    </button>
+                    <button class="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-slate-400 hover:text-rose-500 relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-400 rounded-full border-2 border-white"></span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- SIDEBAR MENU (Mobile & Desktop Overlay style) -->
+        <div id="sidebarOverlay" class="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+            <div id="sidebar" class="absolute top-0 left-0 h-full w-80 bg-white shadow-2xl transform -translate-x-full transition-transform duration-300 ease-out flex flex-col">
+                
+                <div class="p-6 flex justify-between items-center border-b border-slate-100">
+                    <h2 class="text-2xl font-bold text-slate-700">Menú</h2>
+                    <button id="closeMenuBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <nav class="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+                    <!-- Item Simple -->
+                    <a href="#" class="flex items-center gap-4 p-3 rounded-xl bg-indigo-50 text-indigo-600 font-bold shadow-sm transition-all">
+                        <i data-lucide="home" class="w-5 h-5"></i>
+                        <span>Inicio</span>
+                    </a>
+                    
+                    <!-- Accordion: Reportes -->
+                    <div class="accordion-group">
+                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
+                            <div class="flex items-center gap-4">
+                                <i data-lucide="alert-circle" class="w-5 h-5 text-slate-400"></i>
+                                <span>Reportes</span>
+                            </div>
+                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
+                        </div>
+                        <div class="accordion-content pl-12 space-y-1 text-sm">
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
+                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Reportar Fallo
+                            </div>
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
+                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Respuesta Fallos
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accordion: Renovar -->
+                    <div class="accordion-group">
+                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
+                            <div class="flex items-center gap-4">
+                                <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i>
+                                <span>Renovar</span>
+                            </div>
+                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
+                        </div>
+                        <div class="accordion-content pl-12 space-y-1 text-sm">
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
+                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Renovar Cuenta
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pines Masivos -->
+                    <a href="#" class="flex items-center gap-4 p-3 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
+                        <i data-lucide="layers" class="w-5 h-5 text-slate-400"></i>
+                        <span>Pines Masivos</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gestión</p>
+                    </div>
+
+                    <!-- Accordion: Clientes/Ventas -->
+                    <div class="accordion-group">
+                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
+                            <div class="flex items-center gap-4">
+                                <i data-lucide="users" class="w-5 h-5 text-slate-400"></i>
+                                <span>Servicios</span>
+                            </div>
+                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
+                        </div>
+                        <div class="accordion-content pl-12 space-y-1 text-sm">
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Clientes</div>
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Obtener Código</div>
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Recargas Especiales</div>
+                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Ventas Multimedia</div>
+                        </div>
+                    </div>
+                </nav>
+
+                <div class="p-6 bg-slate-50 border-t border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-600 font-bold shadow-inner">VN</div>
+                        <div>
+                            <p id="userLabel" class="text-sm font-bold text-slate-700">Cargando...</p>
+                            <p id="userIdLabel" class="text-xs text-slate-500">ID: ...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 max-w-7xl mx-auto w-full p-4 pb-24 space-y-8">
+            
+            <!-- 1. SECTION: BALANCES -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                
+                <!-- Saldo Card (Dark) -->
+                <div class="bg-slate-800 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-xl shadow-slate-300 hover:scale-[1.01] transition-transform">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                    <p class="text-slate-300 text-sm font-medium mb-1 flex items-center gap-2">
+                        Saldo Disponible 
+                        <i data-lucide="eye" class="w-3 h-3 opacity-50"></i>
+                    </p>
+                    <h2 id="displayBalance" class="text-4xl font-bold tracking-tight mt-2">...</h2>
+                    <div class="mt-4 flex items-center gap-2 text-emerald-400 text-xs font-medium bg-emerald-400/10 w-fit px-2 py-1 rounded-lg">
+                        <i data-lucide="trending-up" class="w-3 h-3"></i>
+                        <span>+2.5% este mes</span>
+                    </div>
+                </div>
+
+                <!-- Ganancia Card (White) -->
+                <div class="bg-white rounded-[2rem] p-6 border border-white shadow-clay relative overflow-hidden">
+                    <div class="absolute bottom-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -mr-5 -mb-5 blur-xl"></div>
+                    <p class="text-slate-500 text-sm font-medium mb-1">Ganancia Total</p>
+                    <h2 id="displayProfit" class="text-4xl font-bold text-slate-700 tracking-tight mt-2">...</h2>
+                    <p class="mt-4 text-xs text-slate-400">Actualizado en tiempo real</p>
+                </div>
+
+                <!-- Actions Card (Pastel) -->
+                <div class="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 flex flex-col justify-center items-center text-center gap-3 shadow-sm">
+                    <div class="p-3 bg-amber-200 text-amber-700 rounded-full mb-1 shadow-sm">
+                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700 text-lg">Recargar Saldo</h3>
+                        <p class="text-xs text-slate-500">Añade fondos de forma segura</p>
+                    </div>
+                    <button class="w-full mt-2 bg-gradient-to-r from-amber-300 to-orange-300 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Cargar Ahora
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. SECTION: BANNER CAROUSEL -->
+            <section class="relative w-full h-48 md:h-72 rounded-[2rem] overflow-hidden shadow-lg shadow-indigo-100 group bg-slate-200">
+                <div id="bannerContainer" class="w-full h-full relative">
+                    <!-- Banners will be injected here by JS -->
+                </div>
+                
+                <!-- Dots -->
+                <div id="bannerDots" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                    <!-- Dots injected by JS -->
+                </div>
+            </section>
+
+            <!-- 3. SECTION: MULTIPRODUCTO GRID -->
+            <section>
+                <div class="flex items-center justify-between mb-6 px-2">
+                    <h3 class="text-xl font-bold text-slate-700 flex items-center gap-2">
+                        <div class="w-1 h-6 bg-indigo-400 rounded-full"></div>
+                        Multiproducto
+                    </h3>
+                    <button class="text-xs bg-indigo-50 text-indigo-500 px-3 py-1 rounded-lg font-bold hover:bg-indigo-100 transition-colors">Ver todo</button>
+                </div>
+
+                <div id="servicesGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    <!-- Service Cards injected by JS -->
+                    <div class="col-span-full text-center py-10 text-slate-400">Cargando servicios...</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- --- JAVASCRIPT LOGIC --- -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+        // --- 1. CONFIGURACIÓN Y VARIABLES ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const firebaseConfig = {
+    apiKey: "AIzaSyBYaYm2LDE6QM_K5Dii74sfZCYYd1eQfvY",
+    authDomain: "ventasstre-a24b7.firebaseapp.com",
+    projectId: "ventasstre-a24b7",
+    storageBucket: "ventasstre-a24b7.firebasestorage.app",
+    messagingSenderId: "197117622028",
+    appId: "1:197117622028:web:ae6380faf72f965a41fb29"
+};
+// Dale un nombre único a tu app aquí, puede ser cualquiera
+const appId = 'mi-ecosistema-vnhe'; 
+
+
+        // Estado local
+        let currentUser = null;
+        let bannersData = [];
+        let currentBannerIndex = 0;
+        let bannerInterval;
+
+        // Map de iconos (string -> lucide name) para renderizado
+        const iconMap = {
+            'ShoppingBag': 'shopping-bag', 'Gift': 'gift', 'Smartphone': 'smartphone', 
+            'Layers': 'layers', 'Code': 'code', 'Zap': 'zap', 
+            'FileText': 'file-text', 'BookOpen': 'book-open'
+        };
+
+        // --- 2. DATOS INICIALES (SEED) ---
+        const INITIAL_SERVICES = [
+            { id: '1', title: 'Marketplace', iconName: 'ShoppingBag', color: 'bg-blue-100 text-blue-500' },
+            { id: '2', title: 'Loterías', iconName: 'Gift', color: 'bg-purple-100 text-purple-500' },
+            { id: '3', title: 'Recargas', iconName: 'Smartphone', color: 'bg-emerald-100 text-emerald-500' },
+            { id: '4', title: 'Paquetes', iconName: 'Layers', color: 'bg-pink-100 text-pink-500' },
+            { id: '5', title: 'Pines', iconName: 'Code', color: 'bg-indigo-100 text-indigo-500' },
+            { id: '6', title: 'Pin Epm', iconName: 'Zap', color: 'bg-yellow-100 text-yellow-600' },
+            { id: '7', title: 'Factura', iconName: 'FileText', color: 'bg-cyan-100 text-cyan-500' },
+            { id: '8', title: 'Revistas', iconName: 'BookOpen', color: 'bg-rose-100 text-rose-500' },
+        ];
+
+        const INITIAL_BANNERS = [
+            { id: '1', title: 'Entretenimiento Total', subtitle: 'Plex, Emby & Jellyfin', color: 'from-indigo-400 to-purple-400' },
+            { id: '2', title: 'Pack Familiar', subtitle: 'Conecta a todos en casa', color: 'from-emerald-400 to-teal-400' },
+            { id: '3', title: 'Ofertas Flash', subtitle: 'Descuentos en Pines hoy', color: 'from-rose-400 to-pink-400' },
+        ];
+
+        const INITIAL_USER_DATA = {
+            balance: 8063,
+            profit: 200,
+            currency: '$'
+        };
+
+        // --- 3. UI HELPERS ---
+        
+        // Inicializar iconos de Lucide
+        const refreshIcons = () => {
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        // Menú Hamburguesa
+        const menuBtn = document.getElementById('menuBtn');
+        const closeMenuBtn = document.getElementById('closeMenuBtn');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const sidebar = document.getElementById('sidebar');
+
+        const toggleMenu = (show) => {
+            if (show) {
+                sidebarOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                sidebar.classList.remove('-translate-x-full');
+            } else {
+                sidebarOverlay.classList.add('opacity-0', 'pointer-events-none');
+                sidebar.classList.add('-translate-x-full');
+            }
+        };
+
+        menuBtn.addEventListener('click', () => toggleMenu(true));
+        closeMenuBtn.addEventListener('click', () => toggleMenu(false));
+        sidebarOverlay.addEventListener('click', (e) => {
+            if (e.target === sidebarOverlay) toggleMenu(false);
+        });
+
+        // Accordion Logic (Global function for HTML onclick)
+        window.toggleAccordion = (element) => {
+            const content = element.nextElementSibling;
+            const icon = element.querySelector('.chevron-icon');
+            const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+            // Reset all others (optional - accordion vs toggle behavior)
+            // document.querySelectorAll('.accordion-content').forEach(el => { el.style.maxHeight = 0; el.style.opacity = 0; });
+            // document.querySelectorAll('.chevron-icon').forEach(el => el.classList.remove('rotate'));
+
+            if (isOpen) {
+                content.style.maxHeight = 0;
+                content.style.opacity = 0;
+                icon.classList.remove('rotate');
+                element.classList.remove('bg-slate-50');
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                content.style.opacity = 1;
+                icon.classList.add('rotate');
+                element.classList.add('bg-slate-50');
+            }
+        };
+
+        // Render Grid
+        const renderServices = (services) => {
+            const container = document.getElementById('servicesGrid');
+            container.innerHTML = services.map(svc => `
+                <div class="bg-white rounded-[1.5rem] p-6 flex flex-col items-center justify-center gap-4 cursor-pointer shadow-clay hover:shadow-clay-hover hover:-translate-y-1 transition-all duration-300 group">
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center ${svc.color} shadow-inner transition-transform duration-300 group-hover:scale-110">
+                        <i data-lucide="${iconMap[svc.iconName] || 'circle'}" class="w-8 h-8"></i>
+                    </div>
+                    <span class="font-bold text-slate-600 text-sm group-hover:text-indigo-500 transition-colors text-center leading-tight">${svc.title}</span>
+                </div>
+            `).join('');
+            refreshIcons();
+        };
+
+        // Render Banners
+        const renderCarousel = () => {
+            const container = document.getElementById('bannerContainer');
+            const dotsContainer = document.getElementById('bannerDots');
+            
+            // Generar Slides
+            container.innerHTML = bannersData.map((banner, idx) => `
+                <div class="absolute inset-0 bg-gradient-to-r ${banner.color} flex flex-col justify-center px-8 md:px-16 transition-opacity duration-700 ${idx === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'}" id="banner-slide-${idx}">
+                    <div class="transform translate-y-0 transition-transform duration-700">
+                        <span class="bg-white/20 text-white text-[10px] font-black px-2 py-1 rounded backdrop-blur-md uppercase tracking-widest mb-3 inline-block border border-white/10">Destacado</span>
+                        <h2 class="text-2xl md:text-4xl font-black text-white mb-2 drop-shadow-sm leading-tight">${banner.title}</h2>
+                        <p class="text-white/90 text-sm md:text-lg font-medium">${banner.subtitle}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // Generar Dots
+            dotsContainer.innerHTML = bannersData.map((_, idx) => `
+                <button onclick="window.setBanner(${idx})" class="h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'w-8 bg-white' : 'w-2 bg-white/50'}" id="banner-dot-${idx}"></button>
+            `).join('');
+        };
+
+        // Carousel Logic
+        const showBanner = (index) => {
+            bannersData.forEach((_, idx) => {
+                const slide = document.getElementById(`banner-slide-${idx}`);
+                const dot = document.getElementById(`banner-dot-${idx}`);
+                if (idx === index) {
+                    slide.classList.remove('opacity-0', 'z-0');
+                    slide.classList.add('opacity-100', 'z-10');
+                    dot.classList.remove('w-2', 'bg-white/50');
+                    dot.classList.add('w-8', 'bg-white');
+                } else {
+                    slide.classList.add('opacity-0', 'z-0');
+                    slide.classList.remove('opacity-100', 'z-10');
+                    dot.classList.add('w-2', 'bg-white/50');
+                    dot.classList.remove('w-8', 'bg-white');
+                }
+            });
+            currentBannerIndex = index;
+        };
+
+        window.setBanner = (idx) => {
+            clearInterval(bannerInterval);
+            showBanner(idx);
+            startCarousel();
+        };
+
+        const startCarousel = () => {
+            bannerInterval = setInterval(() => {
+                const nextIndex = (currentBannerIndex + 1) % bannersData.length;
+                showBanner(nextIndex);
+            }, 4000);
+        };
+
+
+        // --- 4. FIREBASE LOGIC ---
+        
+        const seedDatabase = async () => {
+            const servicesRef = collection(db, 'artifacts', appId, 'public', 'data', 'services');
+            const snapshot = await getDocs(servicesRef);
+            if (snapshot.empty) {
+                console.log('Seeding database...');
+                INITIAL_SERVICES.forEach(svc => setDoc(doc(servicesRef, svc.id), svc));
+                const bannersRef = collection(db, 'artifacts', appId, 'public', 'data', 'banners');
+                INITIAL_BANNERS.forEach(ban => setDoc(doc(bannersRef, ban.id), ban));
+                const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'account_info', 'summary');
+                await setDoc(userRef, INITIAL_USER_DATA);
+            }
+        };
+
+        const initApp = async () => {
+            // 1. Auth
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('userLabel').innerText = 'Usuario Activo';
+                    document.getElementById('userIdLabel').innerText = `ID: ${user.uid.slice(0,6)}...`;
+                    
+                    // Setup Listeners
+                    setupListeners();
+                    
+                    // Seed if needed
+                    seedDatabase();
+                }
+            });
+        };
+
+        const setupListeners = () => {
+            // Services Listener
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'services'), (snap) => {
+                const data = snap.docs.map(d => d.data()).sort((a,b) => parseInt(a.id) - parseInt(b.id));
+                renderServices(data);
+                // Ocultar loader cuando cargue el primer dato importante
+                document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
+                document.getElementById('app').classList.remove('opacity-0');
+            });
+
+            // Banners Listener
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'banners'), (snap) => {
+                bannersData = snap.docs.map(d => d.data());
+                if (bannersData.length === 0) bannersData = INITIAL_BANNERS; // Fallback visual
+                renderCarousel();
+                startCarousel();
+            });
+
+            // User Data Listener
+            onSnapshot(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'account_info', 'summary'), (snap) => {
+                const data = snap.exists() ? snap.data() : INITIAL_USER_DATA;
+                document.getElementById('displayBalance').innerText = `${data.currency || '$'}${data.balance?.toLocaleString()}`;
+                document.getElementById('displayProfit').innerText = `${data.currency || '$'}${data.profit?.toLocaleString()}`;
+            });
+        };
+
+        // Iniciar
+        initApp();
+        refreshIcons(); // Primer render de iconos estáticos
+    </script>
+</body>
+</html>
+
