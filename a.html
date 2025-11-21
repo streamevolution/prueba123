@@ -190,23 +190,19 @@
         import { getFirestore, doc, onSnapshot, collection, addDoc, query, orderBy, limit, serverTimestamp, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         // --- 1. Inicialización ---
-
-// PEGA AQUÍ LO QUE COPIASTE EN LA FASE 2
-const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyBYaYm2LDE6QM_K5Dii74sfZCYYd1eQfvY",
-  authDomain: "tu-ventasstre-a24b7.firebaseapp.com",
+  authDomain: "ventasstre-a24b7.firebaseapp.com",
   projectId: "ventasstre-a24b7",
-  storageBucket: ventasstre-a24b7.firebasestorage.app",
+  storageBucket: "ventasstre-a24b7.firebasestorage.app",
   messagingSenderId: "197117622028",
-  appId: "1:197117622028:web:ae6380faf72f965a41fb29"
+  appId: "1:197117622028:web:ae6380faf72f965a41fb29",
   measurementId: "G-GB44T0FYCT"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = "mi-tienda-v1"; // Pon cualquier nombre aquí entre comillas
-
+const analytics = getAnalytics(app);
 
         let currentUser = null;
 
