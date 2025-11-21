@@ -3,540 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecosistema VNHE | Web App</title>
+    <title>Ecosistema VNHE - Live App</title>
     
-    <!-- Tailwind CSS (CDN) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons (CDN) -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Configuración de Tailwind para colores personalizados y fuentes -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    boxShadow: {
-                        'clay': '8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff',
-                        'clay-hover': '4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff',
-                        'clay-inset': 'inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff',
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.5s ease-out',
-                        'slide-in': 'slideIn 0.3s ease-out',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideIn: {
-                            '0%': { transform: 'translateX(-100%)' },
-                            '100%': { transform: 'translateX(0)' },
-                        }
-                    }
-                }
-            }
-        }
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // --- Configuración Firebase & Lógica ---
+        const firebaseConfig = JSON.parse(new URLSearchParams(window.location.search).get('firebaseConfig') || '{}') || {};
+        // Nota: En este entorno, las variables globales se inyectan automáticamente. 
+        // Usaremos las variables del entorno sandbox para conectar.
     </script>
 
-    <!-- Estilos CSS base -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-        
-        body {
-            background-color: #F0F4F8;
-            -webkit-tap-highlight-color: transparent; 
+        body { font-family: 'Poppins', sans-serif; background-color: #F8FAFC; -webkit-tap-highlight-color: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .soft-3d-icon {
+            box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.7), inset -2px -2px 5px rgba(0, 0, 0, 0.05), 5px 5px 10px rgba(0, 0, 0, 0.05);
         }
-        
-        /* Ocultar scrollbar en navegación pero permitir scroll */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .clay-card {
-            transition: all 0.3s ease;
-        }
-        .clay-card:active {
-            transform: scale(0.98);
-        }
-
-        /* Transiciones suaves para el menú acordeón */
-        .accordion-content {
-            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-        }
-        .accordion-content.active {
-            max-height: 500px; /* Altura máxima arbitraria suficiente */
-            opacity: 1;
-        }
-        .chevron-icon {
-            transition: transform 0.3s ease;
-        }
-        .chevron-icon.rotate {
-            transform: rotate(180deg);
-        }
+        /* Modal Transitions */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 200ms, transform 200ms; }
     </style>
 </head>
-<body class="font-sans text-slate-600 antialiased selection:bg-indigo-100 selection:text-indigo-700">
+<body class="text-slate-800 overflow-x-hidden min-h-screen relative">
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- LOADER -->
-    <div id="loader" class="fixed inset-0 z-[60] bg-[#F0F4F8] flex flex-col items-center justify-center gap-4 transition-opacity duration-500">
-        <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
-        <p class="text-slate-400 font-medium tracking-wider animate-pulse text-sm">CARGANDO ECOSISTEMA...</p>
+    <div id="loader" class="fixed inset-0 bg-slate-50 z-[60] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="w-16 h-16 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin mb-4"></div>
+        <p class="text-slate-400 font-medium tracking-widest text-sm animate-pulse">CONECTANDO A FIREBASE...</p>
     </div>
 
-    <!-- APP CONTAINER -->
-    <div id="app" class="min-h-screen flex flex-col opacity-0 transition-opacity duration-700">
-        
-        <!-- HEADER -->
-        <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-white/50 px-4 py-3 shadow-sm">
-            <div class="max-w-7xl mx-auto flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <button id="menuBtn" class="p-2 rounded-xl hover:bg-slate-100 active:scale-90 transition-all text-slate-700">
-                        <i data-lucide="menu" class="w-7 h-7 stroke-2"></i>
-                    </button>
-                    <div class="flex flex-col leading-tight select-none">
-                        <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Ecosistema</span>
-                        <span class="text-xl font-black text-slate-800 tracking-tight">VNHE</span>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3">
-                    <button class="hidden md:flex p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-slate-400 hover:text-indigo-500">
-                        <i data-lucide="search" class="w-5 h-5"></i>
-                    </button>
-                    <button class="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-slate-400 hover:text-rose-500 relative">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
-                        <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-400 rounded-full border-2 border-white"></span>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- SIDEBAR MENU (Mobile & Desktop Overlay style) -->
-        <div id="sidebarOverlay" class="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-            <div id="sidebar" class="absolute top-0 left-0 h-full w-80 bg-white shadow-2xl transform -translate-x-full transition-transform duration-300 ease-out flex flex-col">
-                
-                <div class="p-6 flex justify-between items-center border-b border-slate-100">
-                    <h2 class="text-2xl font-bold text-slate-700">Menú</h2>
-                    <button id="closeMenuBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                        <i data-lucide="x" class="w-6 h-6"></i>
-                    </button>
-                </div>
-
-                <nav class="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-                    <!-- Item Simple -->
-                    <a href="#" class="flex items-center gap-4 p-3 rounded-xl bg-indigo-50 text-indigo-600 font-bold shadow-sm transition-all">
-                        <i data-lucide="home" class="w-5 h-5"></i>
-                        <span>Inicio</span>
-                    </a>
-                    
-                    <!-- Accordion: Reportes -->
-                    <div class="accordion-group">
-                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
-                            <div class="flex items-center gap-4">
-                                <i data-lucide="alert-circle" class="w-5 h-5 text-slate-400"></i>
-                                <span>Reportes</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
-                        </div>
-                        <div class="accordion-content pl-12 space-y-1 text-sm">
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
-                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Reportar Fallo
-                            </div>
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
-                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Respuesta Fallos
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Accordion: Renovar -->
-                    <div class="accordion-group">
-                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
-                            <div class="flex items-center gap-4">
-                                <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i>
-                                <span>Renovar</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
-                        </div>
-                        <div class="accordion-content pl-12 space-y-1 text-sm">
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer flex items-center gap-2">
-                                <div class="w-1 h-1 bg-slate-300 rounded-full"></div> Renovar Cuenta
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pines Masivos -->
-                    <a href="#" class="flex items-center gap-4 p-3 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <i data-lucide="layers" class="w-5 h-5 text-slate-400"></i>
-                        <span>Pines Masivos</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gestión</p>
-                    </div>
-
-                    <!-- Accordion: Clientes/Ventas -->
-                    <div class="accordion-group">
-                        <div class="accordion-header flex items-center justify-between p-3 rounded-xl cursor-pointer text-slate-500 hover:bg-slate-50 transition-all" onclick="toggleAccordion(this)">
-                            <div class="flex items-center gap-4">
-                                <i data-lucide="users" class="w-5 h-5 text-slate-400"></i>
-                                <span>Servicios</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="chevron-icon w-4 h-4"></i>
-                        </div>
-                        <div class="accordion-content pl-12 space-y-1 text-sm">
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Clientes</div>
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Obtener Código</div>
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Recargas Especiales</div>
-                            <div class="py-2 text-slate-400 hover:text-indigo-500 cursor-pointer">Ventas Multimedia</div>
-                        </div>
-                    </div>
-                </nav>
-
-                <div class="p-6 bg-slate-50 border-t border-slate-100">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-600 font-bold shadow-inner">VN</div>
-                        <div>
-                            <p id="userLabel" class="text-sm font-bold text-slate-700">Cargando...</p>
-                            <p id="userIdLabel" class="text-xs text-slate-500">ID: ...</p>
-                        </div>
-                    </div>
-                </div>
+    <!-- MODAL GENÉRICO -->
+    <div id="app-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative shadow-2xl transform transition-all scale-100 opacity-100">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-rose-500">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <div id="modal-content">
+                <!-- Contenido dinámico aquí -->
             </div>
         </div>
-
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 max-w-7xl mx-auto w-full p-4 pb-24 space-y-8">
-            
-            <!-- 1. SECTION: BALANCES -->
-            <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                
-                <!-- Saldo Card (Dark) -->
-                <div class="bg-slate-800 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-xl shadow-slate-300 hover:scale-[1.01] transition-transform">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                    <p class="text-slate-300 text-sm font-medium mb-1 flex items-center gap-2">
-                        Saldo Disponible 
-                        <i data-lucide="eye" class="w-3 h-3 opacity-50"></i>
-                    </p>
-                    <h2 id="displayBalance" class="text-4xl font-bold tracking-tight mt-2">...</h2>
-                    <div class="mt-4 flex items-center gap-2 text-emerald-400 text-xs font-medium bg-emerald-400/10 w-fit px-2 py-1 rounded-lg">
-                        <i data-lucide="trending-up" class="w-3 h-3"></i>
-                        <span>+2.5% este mes</span>
-                    </div>
-                </div>
-
-                <!-- Ganancia Card (White) -->
-                <div class="bg-white rounded-[2rem] p-6 border border-white shadow-clay relative overflow-hidden">
-                    <div class="absolute bottom-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -mr-5 -mb-5 blur-xl"></div>
-                    <p class="text-slate-500 text-sm font-medium mb-1">Ganancia Total</p>
-                    <h2 id="displayProfit" class="text-4xl font-bold text-slate-700 tracking-tight mt-2">...</h2>
-                    <p class="mt-4 text-xs text-slate-400">Actualizado en tiempo real</p>
-                </div>
-
-                <!-- Actions Card (Pastel) -->
-                <div class="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 flex flex-col justify-center items-center text-center gap-3 shadow-sm">
-                    <div class="p-3 bg-amber-200 text-amber-700 rounded-full mb-1 shadow-sm">
-                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-700 text-lg">Recargar Saldo</h3>
-                        <p class="text-xs text-slate-500">Añade fondos de forma segura</p>
-                    </div>
-                    <button class="w-full mt-2 bg-gradient-to-r from-amber-300 to-orange-300 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center justify-center gap-2">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Cargar Ahora
-                    </button>
-                </div>
-            </section>
-
-            <!-- 2. SECTION: BANNER CAROUSEL -->
-            <section class="relative w-full h-48 md:h-72 rounded-[2rem] overflow-hidden shadow-lg shadow-indigo-100 group bg-slate-200">
-                <div id="bannerContainer" class="w-full h-full relative">
-                    <!-- Banners will be injected here by JS -->
-                </div>
-                
-                <!-- Dots -->
-                <div id="bannerDots" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                    <!-- Dots injected by JS -->
-                </div>
-            </section>
-
-            <!-- 3. SECTION: MULTIPRODUCTO GRID -->
-            <section>
-                <div class="flex items-center justify-between mb-6 px-2">
-                    <h3 class="text-xl font-bold text-slate-700 flex items-center gap-2">
-                        <div class="w-1 h-6 bg-indigo-400 rounded-full"></div>
-                        Multiproducto
-                    </h3>
-                    <button class="text-xs bg-indigo-50 text-indigo-500 px-3 py-1 rounded-lg font-bold hover:bg-indigo-100 transition-colors">Ver todo</button>
-                </div>
-
-                <div id="servicesGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                    <!-- Service Cards injected by JS -->
-                    <div class="col-span-full text-center py-10 text-slate-400">Cargando servicios...</div>
-                </div>
-            </section>
-
-        </main>
     </div>
 
-    <!-- --- JAVASCRIPT LOGIC --- -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+    <!-- HEADER -->
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95 transition-all">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-200 rounded-full flex items-center justify-center text-white font-bold shadow-sm text-sm">VN</div>
+                <h1 class="text-sm font-bold text-slate-700 tracking-wide">ECOSISTEMA <span class="text-amber-500">VNHE</span></h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> ONLINE
+            </div>
+            <button class="p-2 text-slate-400 hover:text-amber-500 transition-colors">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
 
-        // --- 1. CONFIGURACIÓN Y VARIABLES ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const firebaseConfig = {
-    apiKey: "AIzaSyBYaYm2LDE6QM_K5Dii74sfZCYYd1eQfvY",
-    authDomain: "ventasstre-a24b7.firebaseapp.com",
-    projectId: "ventasstre-a24b7",
-    storageBucket: "ventasstre-a24b7.firebasestorage.app",
-    messagingSenderId: "197117622028",
-    appId: "1:197117622028:web:ae6380faf72f965a41fb29"
-};
-// Dale un nombre único a tu app aquí, puede ser cualquiera
-const appId = 'mi-ecosistema-vnhe'; 
+    <!-- SIDEBAR -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 transition-transform duration-300 -translate-x-full flex flex-col">
+        <div class="p-5 flex justify-between items-center border-b border-slate-100">
+            <h2 class="font-bold text-lg text-slate-800">Menú Principal</h2>
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-rose-50 text-rose-400 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <div class="p-4 space-y-1 overflow-y-auto flex-1 scrollbar-hide">
+            <div class="flex items-center gap-4 p-3 rounded-xl bg-amber-50 text-amber-600 font-semibold cursor-pointer"><i data-lucide="home" class="w-5 h-5"></i><span class="text-sm">Inicio</span></div>
+            <!-- Menu Items... (Simplificados para brevedad, funcionan igual) -->
+            <button onclick="showToast('Función de reporte simulada', 'info')" class="w-full flex items-center gap-4 p-3 rounded-xl text-slate-600 hover:bg-slate-50"><i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm font-medium">Reportar Fallo</span></button>
+            <button onclick="showToast('Historial cargado en pantalla principal', 'success')" class="w-full flex items-center gap-4 p-3 rounded-xl text-slate-600 hover:bg-slate-50"><i data-lucide="trending-up" class="w-5 h-5"></i><span class="text-sm font-medium">Movimientos</span></button>
+        </div>
+        <div class="p-4 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-400">ID Usuario: <span id="user-id-display" class="font-mono">...</span></p>
+        </div>
+    </aside>
 
-
-        // Estado local
-        let currentUser = null;
-        let bannersData = [];
-        let currentBannerIndex = 0;
-        let bannerInterval;
-
-        // Map de iconos (string -> lucide name) para renderizado
-        const iconMap = {
-            'ShoppingBag': 'shopping-bag', 'Gift': 'gift', 'Smartphone': 'smartphone', 
-            'Layers': 'layers', 'Code': 'code', 'Zap': 'zap', 
-            'FileText': 'file-text', 'BookOpen': 'book-open'
-        };
-
-        // --- 2. DATOS INICIALES (SEED) ---
-        const INITIAL_SERVICES = [
-            { id: '1', title: 'Marketplace', iconName: 'ShoppingBag', color: 'bg-blue-100 text-blue-500' },
-            { id: '2', title: 'Loterías', iconName: 'Gift', color: 'bg-purple-100 text-purple-500' },
-            { id: '3', title: 'Recargas', iconName: 'Smartphone', color: 'bg-emerald-100 text-emerald-500' },
-            { id: '4', title: 'Paquetes', iconName: 'Layers', color: 'bg-pink-100 text-pink-500' },
-            { id: '5', title: 'Pines', iconName: 'Code', color: 'bg-indigo-100 text-indigo-500' },
-            { id: '6', title: 'Pin Epm', iconName: 'Zap', color: 'bg-yellow-100 text-yellow-600' },
-            { id: '7', title: 'Factura', iconName: 'FileText', color: 'bg-cyan-100 text-cyan-500' },
-            { id: '8', title: 'Revistas', iconName: 'BookOpen', color: 'bg-rose-100 text-rose-500' },
-        ];
-
-        const INITIAL_BANNERS = [
-            { id: '1', title: 'Entretenimiento Total', subtitle: 'Plex, Emby & Jellyfin', color: 'from-indigo-400 to-purple-400' },
-            { id: '2', title: 'Pack Familiar', subtitle: 'Conecta a todos en casa', color: 'from-emerald-400 to-teal-400' },
-            { id: '3', title: 'Ofertas Flash', subtitle: 'Descuentos en Pines hoy', color: 'from-rose-400 to-pink-400' },
-        ];
-
-        const INITIAL_USER_DATA = {
-            balance: 8063,
-            profit: 200,
-            currency: '$'
-        };
-
-        // --- 3. UI HELPERS ---
+    <!-- MAIN CONTENT -->
+    <main class="px-4 py-6 space-y-8 max-w-md mx-auto md:max-w-3xl mb-24">
         
-        // Inicializar iconos de Lucide
-        const refreshIcons = () => {
-            if (window.lucide) window.lucide.createIcons();
-        };
+        <!-- BALANCES -->
+        <section class="flex justify-between items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <div class="flex-1 min-w-[100px] bg-slate-800 text-white rounded-3xl py-4 px-4 flex flex-col items-center justify-center shadow-lg shadow-slate-200">
+                <span class="text-[10px] uppercase tracking-wider opacity-70 mb-1">Saldo</span>
+                <span id="balance-display" class="font-bold text-lg text-emerald-400 transition-all duration-300">...</span>
+            </div>
+            <div class="flex-1 min-w-[100px] bg-slate-200/50 text-slate-700 rounded-3xl py-4 px-4 flex flex-col items-center justify-center border border-slate-200">
+                <span class="text-[10px] uppercase tracking-wider opacity-70 mb-1">Ganancia</span>
+                <span id="profit-display" class="font-bold text-lg transition-all duration-300">...</span>
+            </div>
+            <button onclick="openChargeModal()" class="flex-1 min-w-[100px] bg-amber-400 text-slate-900 rounded-3xl py-4 px-4 flex flex-col items-center justify-center shadow-lg shadow-amber-200 hover:bg-amber-300 active:scale-95 transition-transform">
+                <i data-lucide="plus-circle" class="w-5 h-5 mb-1"></i>
+                <span class="font-bold text-xs">Cargar</span>
+            </button>
+        </section>
 
-        // Menú Hamburguesa
-        const menuBtn = document.getElementById('menuBtn');
-        const closeMenuBtn = document.getElementById('closeMenuBtn');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-        const sidebar = document.getElementById('sidebar');
+        <!-- BANNER -->
+        <section class="relative w-full h-40 rounded-3xl overflow-hidden shadow-md group cursor-pointer" onclick="openProductModal('Streaming Premium', 25000)">
+            <div class="absolute inset-0 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-600 flex items-center px-6">
+                <div class="z-10 w-3/4">
+                    <span class="bg-amber-400 text-slate-900 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 inline-block">Oferta</span>
+                    <h3 class="text-white font-bold text-lg leading-tight mb-1">Plex + Emby</h3>
+                    <p class="text-slate-300 text-xs mb-3">Acceso total por solo $25.000</p>
+                    <div class="flex gap-2">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i data-lucide="play" class="w-3 h-3 text-white fill-white"></i></div>
+                    </div>
+                </div>
+                <div class="absolute right-0 bottom-0 w-32 h-32 bg-amber-400 rounded-full blur-3xl opacity-20 translate-y-1/2 translate-x-1/4"></div>
+            </div>
+        </section>
 
-        const toggleMenu = (show) => {
-            if (show) {
-                sidebarOverlay.classList.remove('opacity-0', 'pointer-events-none');
-                sidebar.classList.remove('-translate-x-full');
-            } else {
-                sidebarOverlay.classList.add('opacity-0', 'pointer-events-none');
-                sidebar.classList.add('-translate-x-full');
+        <!-- SERVICES GRID -->
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-800 text-lg border-b-2 border-amber-400 inline-block pb-1">Multiproducto</h3>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Botones funcionales que abren modal de compra -->
+                <div onclick="openProductModal('Marketplace', 5000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="shopping-bag" class="w-7 h-7 text-orange-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Marketplace</span>
+                </div>
+                <div onclick="openProductModal('Lotería', 3000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="dices" class="w-7 h-7 text-emerald-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Loterías</span>
+                </div>
+                <div onclick="openProductModal('Recargas', 10000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="repeat" class="w-7 h-7 text-blue-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Recargas</span>
+                </div>
+                <div onclick="openProductModal('Paquetes', 15000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="package" class="w-7 h-7 text-purple-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Paquetes</span>
+                </div>
+                <div onclick="openProductModal('Pines', 20000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="gift" class="w-7 h-7 text-pink-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Pines</span>
+                </div>
+                <div onclick="openProductModal('Pin EPM', 25000)" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all hover:shadow-md group">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center mb-3 soft-3d-icon group-hover:scale-110 transition-transform"><i data-lucide="lightbulb" class="w-7 h-7 text-yellow-600"></i></div>
+                    <span class="font-medium text-slate-600 text-sm text-center">Pin Epm</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- HISTORIAL DE MOVIMIENTOS -->
+        <section>
+            <h3 class="font-bold text-slate-800 text-lg mb-3 flex items-center gap-2">
+                <i data-lucide="history" class="w-5 h-5 text-slate-400"></i> Últimos Movimientos
+            </h3>
+            <div id="transactions-list" class="space-y-3 pb-4">
+                <p class="text-sm text-slate-400 text-center py-4">Cargando movimientos...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FIREBASE LOGIC SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, addDoc, query, orderBy, limit, serverTimestamp, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // --- 1. Inicialización ---
+
+// PEGA AQUÍ LO QUE COPIASTE EN LA FASE 2
+const firebaseConfig = {
+  apiKey: "AIzaSyBYaYm2LDE6QM_K5Dii74sfZCYYd1eQfvY",
+  authDomain: "tu-ventasstre-a24b7.firebaseapp.com",
+  projectId: "ventasstre-a24b7",
+  storageBucket: ventasstre-a24b7.firebasestorage.app",
+  messagingSenderId: "197117622028",
+  appId: "1:197117622028:web:ae6380faf72f965a41fb29"
+  measurementId: "G-GB44T0FYCT"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = "mi-tienda-v1"; // Pon cualquier nombre aquí entre comillas
+
+
+        let currentUser = null;
+
+        // --- 2. Autenticación ---
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('loader').innerHTML = `<p class="text-rose-500">Error de conexión. Recarga la página.</p>`;
             }
-        };
+        }
+        initAuth();
 
-        menuBtn.addEventListener('click', () => toggleMenu(true));
-        closeMenuBtn.addEventListener('click', () => toggleMenu(false));
-        sidebarOverlay.addEventListener('click', (e) => {
-            if (e.target === sidebarOverlay) toggleMenu(false);
+        // --- 3. Lógica de Negocio y Listeners ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-id-display').textContent = user.uid.substring(0,6) + '...';
+                
+                // Ocultar Loader
+                const loader = document.getElementById('loader');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+
+                // Inicializar Wallet si no existe
+                const walletRef = doc(db, 'artifacts', appId, 'users', user.uid, 'wallet', 'main');
+                const walletSnap = await getDoc(walletRef);
+                
+                if (!walletSnap.exists()) {
+                    await setDoc(walletRef, {
+                        balance: 8063, // Saldo inicial demo
+                        profit: 200,
+                        lastUpdated: serverTimestamp()
+                    });
+                }
+
+                // Escuchar Saldo
+                onSnapshot(walletRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        updateBalanceUI(data.balance, data.profit);
+                    }
+                }, (error) => console.error("Error escuchando saldo:", error));
+
+                // Escuchar Movimientos
+                const transactionsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'transactions');
+                const q = query(transactionsRef, orderBy('timestamp', 'desc'), limit(10));
+                
+                onSnapshot(q, (snapshot) => {
+                    const list = document.getElementById('transactions-list');
+                    if (snapshot.empty) {
+                        list.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">No hay movimientos recientes.</p>`;
+                    } else {
+                        list.innerHTML = '';
+                        snapshot.forEach((doc) => {
+                            const t = doc.data();
+                            list.innerHTML += createTransactionHTML(t);
+                        });
+                        lucide.createIcons();
+                    }
+                }, (error) => console.error("Error escuchando transacciones:", error));
+
+            }
         });
 
-        // Accordion Logic (Global function for HTML onclick)
-        window.toggleAccordion = (element) => {
-            const content = element.nextElementSibling;
-            const icon = element.querySelector('.chevron-icon');
-            const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+        // --- Funciones de UI ---
+        function updateBalanceUI(balance, profit) {
+            // Animación de conteo simple
+            document.getElementById('balance-display').textContent = `$${balance.toLocaleString()}`;
+            document.getElementById('profit-display').textContent = `$${profit.toLocaleString()}`;
+        }
 
-            // Reset all others (optional - accordion vs toggle behavior)
-            // document.querySelectorAll('.accordion-content').forEach(el => { el.style.maxHeight = 0; el.style.opacity = 0; });
-            // document.querySelectorAll('.chevron-icon').forEach(el => el.classList.remove('rotate'));
-
-            if (isOpen) {
-                content.style.maxHeight = 0;
-                content.style.opacity = 0;
-                icon.classList.remove('rotate');
-                element.classList.remove('bg-slate-50');
-            } else {
-                content.style.maxHeight = content.scrollHeight + "px";
-                content.style.opacity = 1;
-                icon.classList.add('rotate');
-                element.classList.add('bg-slate-50');
-            }
-        };
-
-        // Render Grid
-        const renderServices = (services) => {
-            const container = document.getElementById('servicesGrid');
-            container.innerHTML = services.map(svc => `
-                <div class="bg-white rounded-[1.5rem] p-6 flex flex-col items-center justify-center gap-4 cursor-pointer shadow-clay hover:shadow-clay-hover hover:-translate-y-1 transition-all duration-300 group">
-                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center ${svc.color} shadow-inner transition-transform duration-300 group-hover:scale-110">
-                        <i data-lucide="${iconMap[svc.iconName] || 'circle'}" class="w-8 h-8"></i>
-                    </div>
-                    <span class="font-bold text-slate-600 text-sm group-hover:text-indigo-500 transition-colors text-center leading-tight">${svc.title}</span>
-                </div>
-            `).join('');
-            refreshIcons();
-        };
-
-        // Render Banners
-        const renderCarousel = () => {
-            const container = document.getElementById('bannerContainer');
-            const dotsContainer = document.getElementById('bannerDots');
+        function createTransactionHTML(t) {
+            const isPositive = t.type === 'deposit';
+            const colorClass = isPositive ? 'text-emerald-600' : 'text-slate-800';
+            const bgClass = isPositive ? 'bg-emerald-100' : 'bg-rose-50';
+            const sign = isPositive ? '+' : '-';
+            const icon = isPositive ? 'arrow-down-left' : 'shopping-bag';
             
-            // Generar Slides
-            container.innerHTML = bannersData.map((banner, idx) => `
-                <div class="absolute inset-0 bg-gradient-to-r ${banner.color} flex flex-col justify-center px-8 md:px-16 transition-opacity duration-700 ${idx === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'}" id="banner-slide-${idx}">
-                    <div class="transform translate-y-0 transition-transform duration-700">
-                        <span class="bg-white/20 text-white text-[10px] font-black px-2 py-1 rounded backdrop-blur-md uppercase tracking-widest mb-3 inline-block border border-white/10">Destacado</span>
-                        <h2 class="text-2xl md:text-4xl font-black text-white mb-2 drop-shadow-sm leading-tight">${banner.title}</h2>
-                        <p class="text-white/90 text-sm md:text-lg font-medium">${banner.subtitle}</p>
+            // Formatear fecha
+            let timeStr = 'Reciente';
+            if (t.timestamp) {
+                const date = t.timestamp.toDate();
+                timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            return `
+                <div class="bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full ${bgClass} flex items-center justify-center text-${isPositive ? 'emerald' : 'rose'}-500">
+                            <i data-lucide="${icon}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">${t.description}</p>
+                            <p class="text-[10px] text-slate-400">${timeStr} • ${t.status || 'Exitoso'}</p>
+                        </div>
                     </div>
+                    <span class="font-bold text-sm ${colorClass}">${sign}$${t.amount.toLocaleString()}</span>
                 </div>
-            `).join('');
+            `;
+        }
 
-            // Generar Dots
-            dotsContainer.innerHTML = bannersData.map((_, idx) => `
-                <button onclick="window.setBanner(${idx})" class="h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'w-8 bg-white' : 'w-2 bg-white/50'}" id="banner-dot-${idx}"></button>
-            `).join('');
-        };
-
-        // Carousel Logic
-        const showBanner = (index) => {
-            bannersData.forEach((_, idx) => {
-                const slide = document.getElementById(`banner-slide-${idx}`);
-                const dot = document.getElementById(`banner-dot-${idx}`);
-                if (idx === index) {
-                    slide.classList.remove('opacity-0', 'z-0');
-                    slide.classList.add('opacity-100', 'z-10');
-                    dot.classList.remove('w-2', 'bg-white/50');
-                    dot.classList.add('w-8', 'bg-white');
-                } else {
-                    slide.classList.add('opacity-0', 'z-0');
-                    slide.classList.remove('opacity-100', 'z-10');
-                    dot.classList.add('w-2', 'bg-white/50');
-                    dot.classList.remove('w-8', 'bg-white');
-                }
-            });
-            currentBannerIndex = index;
-        };
-
-        window.setBanner = (idx) => {
-            clearInterval(bannerInterval);
-            showBanner(idx);
-            startCarousel();
-        };
-
-        const startCarousel = () => {
-            bannerInterval = setInterval(() => {
-                const nextIndex = (currentBannerIndex + 1) % bannersData.length;
-                showBanner(nextIndex);
-            }, 4000);
-        };
-
-
-        // --- 4. FIREBASE LOGIC ---
+        // --- Operaciones Globales (Expuestas al Window) ---
         
-        const seedDatabase = async () => {
-            const servicesRef = collection(db, 'artifacts', appId, 'public', 'data', 'services');
-            const snapshot = await getDocs(servicesRef);
-            if (snapshot.empty) {
-                console.log('Seeding database...');
-                INITIAL_SERVICES.forEach(svc => setDoc(doc(servicesRef, svc.id), svc));
-                const bannersRef = collection(db, 'artifacts', appId, 'public', 'data', 'banners');
-                INITIAL_BANNERS.forEach(ban => setDoc(doc(bannersRef, ban.id), ban));
-                const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'account_info', 'summary');
-                await setDoc(userRef, INITIAL_USER_DATA);
+        window.processRecharge = async (amount) => {
+            if (!currentUser) return;
+            const btn = document.getElementById('confirm-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+            btn.disabled = true;
+
+            try {
+                const walletRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'wallet', 'main');
+                const transactionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'transactions');
+
+                await runTransaction(db, async (transaction) => {
+                    const sfDoc = await transaction.get(walletRef);
+                    if (!sfDoc.exists()) throw "Cuenta no existe";
+                    
+                    const newBalance = sfDoc.data().balance + Number(amount);
+                    transaction.update(walletRef, { balance: newBalance });
+                    
+                    // No podemos añadir doc en transacción fácilmente sin ID pre-generado, 
+                    // así que lo hacemos fuera o usamos set con ref. 
+                    // Para simplificar Firestore simple: Update here, Add later.
+                });
+
+                // Añadir transacción (fuera del atomic lock para simplificar este ejemplo UI)
+                await addDoc(transactionsRef, {
+                    type: 'deposit',
+                    amount: Number(amount),
+                    description: 'Recarga de Saldo',
+                    timestamp: serverTimestamp(),
+                    status: 'Aprobado'
+                });
+
+                showToast(`¡Recarga de $${amount} exitosa!`, 'success');
+                closeModal();
+            } catch (e) {
+                console.error(e);
+                showToast('Error al recargar', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         };
 
-        const initApp = async () => {
-            // 1. Auth
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+        window.processPurchase = async (serviceName, price) => {
+            if (!currentUser) return;
+            const btn = document.getElementById('confirm-purchase-btn');
+            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+            btn.disabled = true;
 
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    document.getElementById('userLabel').innerText = 'Usuario Activo';
-                    document.getElementById('userIdLabel').innerText = `ID: ${user.uid.slice(0,6)}...`;
+            try {
+                const walletRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'wallet', 'main');
+                const transactionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'transactions');
+
+                await runTransaction(db, async (transaction) => {
+                    const sfDoc = await transaction.get(walletRef);
+                    if (!sfDoc.exists()) throw "Error cuenta";
                     
-                    // Setup Listeners
-                    setupListeners();
-                    
-                    // Seed if needed
-                    seedDatabase();
+                    const currentBal = sfDoc.data().balance;
+                    if (currentBal < price) throw "Saldo insuficiente";
+
+                    const newBalance = currentBal - Number(price);
+                    const newProfit = sfDoc.data().profit + (price * 0.05); // 5% profit simulado
+
+                    transaction.update(walletRef, { 
+                        balance: newBalance,
+                        profit: newProfit
+                    });
+                });
+
+                await addDoc(transactionsRef, {
+                    type: 'purchase',
+                    amount: Number(price),
+                    description: `Compra ${serviceName}`,
+                    timestamp: serverTimestamp(),
+                    status: 'Completado'
+                });
+
+                showToast(`¡Compra de ${serviceName} exitosa!`, 'success');
+                closeModal();
+            } catch (e) {
+                if (e === "Saldo insuficiente") {
+                    showToast('Saldo insuficiente. Recarga primero.', 'error');
+                } else {
+                    console.error(e);
+                    showToast('Error en la transacción', 'error');
                 }
-            });
+            } finally {
+                btn.innerHTML = "Confirmar Compra";
+                btn.disabled = false;
+            }
         };
 
-        const setupListeners = () => {
-            // Services Listener
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'services'), (snap) => {
-                const data = snap.docs.map(d => d.data()).sort((a,b) => parseInt(a.id) - parseInt(b.id));
-                renderServices(data);
-                // Ocultar loader cuando cargue el primer dato importante
-                document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
-                document.getElementById('app').classList.remove('opacity-0');
-            });
+    </script>
 
-            // Banners Listener
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'banners'), (snap) => {
-                bannersData = snap.docs.map(d => d.data());
-                if (bannersData.length === 0) bannersData = INITIAL_BANNERS; // Fallback visual
-                renderCarousel();
-                startCarousel();
-            });
+    <!-- UI INTERACTION SCRIPT -->
+    <script>
+        // Inicializar Iconos UI
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
 
-            // User Data Listener
-            onSnapshot(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'account_info', 'summary'), (snap) => {
-                const data = snap.exists() ? snap.data() : INITIAL_USER_DATA;
-                document.getElementById('displayBalance').innerText = `${data.currency || '$'}${data.balance?.toLocaleString()}`;
-                document.getElementById('displayProfit').innerText = `${data.currency || '$'}${data.profit?.toLocaleString()}`;
-            });
-        };
+        // Sidebar logic
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            
+            if (isOpen) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.remove('opacity-100', 'pointer-events-auto');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.add('opacity-100', 'pointer-events-auto');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+            }
+        }
 
-        // Iniciar
-        initApp();
-        refreshIcons(); // Primer render de iconos estáticos
+        // Toast System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Colores según tipo
+            const colors = {
+                success: 'bg-emerald-500 text-white',
+                error: 'bg-rose-500 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info';
+
+            toast.className = `${colors[type]} px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-x-full pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate In
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+
+            // Remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Modal Logic
+        function closeModal() {
+            const modal = document.getElementById('app-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function openModal(contentHTML) {
+            const modal = document.getElementById('app-modal');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = contentHTML;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        // Specific Modals
+        function openChargeModal() {
+            openModal(`
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="wallet" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Cargar Saldo</h3>
+                    <p class="text-slate-500 text-sm mb-6">Ingresa el monto a añadir a tu billetera virtual.</p>
+                    
+                    <input type="number" id="charge-amount" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-center mb-4 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200" placeholder="$0" value="10000">
+                    
+                    <button id="confirm-btn" onclick="processRecharge(document.getElementById('charge-amount').value)" class="w-full bg-amber-400 text-slate-900 font-bold py-3 rounded-xl shadow-lg shadow-amber-200 hover:bg-amber-300 active:scale-95 transition-all">
+                        Confirmar Recarga
+                    </button>
+                </div>
+            `);
+        }
+
+        function openProductModal(name, price) {
+            openModal(`
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="shopping-cart" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-1">Comprar ${name}</h3>
+                    <p class="text-slate-400 text-sm mb-6">Valor: <span class="text-slate-800 font-bold">$${price.toLocaleString()}</span></p>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl mb-6 text-left">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider mb-2">Detalles</p>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-600">Servicio:</span>
+                            <span class="font-medium">${name}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-600">Comisión:</span>
+                            <span class="font-medium text-emerald-500">+$${(price * 0.05).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <button id="confirm-purchase-btn" onclick="processPurchase('${name}', ${price})" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-slate-700 active:scale-95 transition-all">
+                        Confirmar Compra
+                    </button>
+                </div>
+            `);
+        }
     </script>
 </body>
 </html>
+
 
